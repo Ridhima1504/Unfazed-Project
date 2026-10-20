@@ -1,10 +1,10 @@
 
 import { Navigate, Route, Routes } from "react-router-dom";
 import Navbar from "./components/Navbar";
-import Register from "./pagess/Register";
-import Login from "./pagess/Login";
-import Dashboard from "./pagess/Dashboard";
-import PublicProfile from "./pagess/PublicProfile";
+import Register from "./pages/Register";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import PublicProfile from "./pages/PublicProfile";
 
 function Home() {
   return (

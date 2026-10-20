@@ -1,9 +1,8 @@
-
 import express from "express";
 import cors from "cors";
 
 import authRouter from "./routes/authRoutes.js";
-import TherapistRouter from "./routes/therapistRoutes.js";
+import therapistRouter from "./routes/therapistRoutes.js";
 
 const app = express();
 
@@ -23,6 +22,6 @@ app.get("/api/health", (req, res) => {
 });
 
 app.use("/api/auth", authRouter);
-app.use("/api/therapists", TherapistRouter);
+app.use("/api/therapists", therapistRouter);
 
 export default app;
