@@ -1,7 +1,7 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import Therapist from "../models/therapist";
+import Therapist from "../models/therapist.js";
 
 const router = express.Router();
 
