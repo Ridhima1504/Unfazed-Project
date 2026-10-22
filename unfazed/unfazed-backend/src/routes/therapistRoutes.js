@@ -1,5 +1,5 @@
 import express from "express";
-import Therapist from "../models/therapist.js";
+import Therapist from "../models/Therapist.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
