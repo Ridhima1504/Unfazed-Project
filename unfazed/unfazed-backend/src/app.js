@@ -18,7 +18,7 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests without an Origin header (e.g. health checks)
+      // Allow requests without an Origin header, such as health checks
       if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
@@ -54,7 +54,7 @@ app.get("/api/health", (req, res) => {
 // Authentication routes
 app.use("/api/auth", authRouter);
 
-// Therapist routes
+// Therapist profile routes
 app.use("/api/therapists", therapistRouter);
 
 // Handle unknown routes

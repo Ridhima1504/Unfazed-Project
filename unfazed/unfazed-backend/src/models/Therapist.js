@@ -33,6 +33,7 @@ const therapistSchema = new mongoose.Schema(
     bio: {
       type: String,
       default: "",
+      maxlength: 2000,
     },
 
     specializations: {
@@ -42,7 +43,7 @@ const therapistSchema = new mongoose.Schema(
 
     languages: {
       type: [String],
-      default: ["English"],
+      default: [""],
     },
 
     plan: {
