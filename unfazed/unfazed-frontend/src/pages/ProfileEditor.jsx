@@ -1,10 +1,21 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Eye, Leaf, Save } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  Check,
+  Eye,
+  Globe2,
+  Leaf,
+  Save,
+  Sparkles,
+  UserRound,
+} from "lucide-react";
 import api from "../api/axiosInstance";
+import "./ProfileEditor.css";
 
-const emptyProfile = {
+const initialProfile = {
   name: "",
   email: "",
   bio: "",
@@ -14,20 +25,14 @@ const emptyProfile = {
   plan: "free",
 };
 
-function toCommaSeparated(value) {
-  if (!Array.isArray(value)) return "";
-  return value.join(", ");
-}
-
-function toArray(value) {
-  return value
+const splitList = (value) =>
+  value
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
-}
 
 export default function ProfileEditor() {
-  const [form, setForm] = useState(emptyProfile);
+  const [form, setForm] = useState(initialProfile);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -38,9 +43,12 @@ export default function ProfileEditor() {
 
     async function loadProfile() {
       try {
-        setError("");
-
         const token = localStorage.getItem("unfazed-token");
+
+        if (!token) {
+          setError("Please log in to edit your profile.");
+          return;
+        }
 
         const { data } = await api.get("/therapists/me", {
           headers: {
@@ -56,20 +64,22 @@ export default function ProfileEditor() {
           name: therapist.name || "",
           email: therapist.email || "",
           bio: therapist.bio || "",
-          specializations: toCommaSeparated(
-            therapist.specializations
-          ),
-          languages: toCommaSeparated(therapist.languages),
+          specializations: Array.isArray(therapist.specializations)
+            ? therapist.specializations.join(", ")
+            : "",
+          languages: Array.isArray(therapist.languages)
+            ? therapist.languages.join(", ")
+            : "",
           slug: therapist.slug || "",
           plan: therapist.plan || "free",
         });
       } catch (err) {
-        if (!active) return;
-
-        setError(
-          err.response?.data?.message ||
-            "Could not load your profile. Please try again."
-        );
+        if (active) {
+          setError(
+            err.response?.data?.message ||
+              "We couldn't load your profile. Please try again."
+          );
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -96,7 +106,6 @@ export default function ProfileEditor() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-
     setError("");
     setSuccess("");
 
@@ -105,21 +114,24 @@ export default function ProfileEditor() {
       return;
     }
 
+    if (form.bio.length > 2000) {
+      setError("Your introduction must be 2000 characters or fewer.");
+      return;
+    }
+
     setSaving(true);
 
     try {
       const token = localStorage.getItem("unfazed-token");
 
-      const profileData = {
-        name: form.name.trim(),
-        bio: form.bio.trim(),
-        specializations: toArray(form.specializations),
-        languages: toArray(form.languages),
-      };
-
       const { data } = await api.put(
         "/therapists/me",
-        profileData,
+        {
+          name: form.name.trim(),
+          bio: form.bio.trim(),
+          specializations: splitList(form.specializations),
+          languages: splitList(form.languages),
+        },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -131,198 +143,386 @@ export default function ProfileEditor() {
 
       setForm((current) => ({
         ...current,
-        name: therapist.name || current.name,
-        email: therapist.email || current.email,
-        bio: therapist.bio || "",
-        specializations: toCommaSeparated(
-          therapist.specializations
-        ),
-        languages: toCommaSeparated(therapist.languages),
-        slug: therapist.slug || current.slug,
-        plan: therapist.plan || current.plan,
+        name: therapist.name ?? current.name,
+        email: therapist.email ?? current.email,
+        bio: therapist.bio ?? "",
+        specializations: Array.isArray(therapist.specializations)
+          ? therapist.specializations.join(", ")
+          : "",
+        languages: Array.isArray(therapist.languages)
+          ? therapist.languages.join(", ")
+          : "",
+        slug: therapist.slug ?? current.slug,
+        plan: therapist.plan ?? current.plan,
       }));
 
-      // Keep the locally stored therapist details in sync.
-      const storedTherapist = JSON.parse(
+      const stored = JSON.parse(
         localStorage.getItem("unfazed-therapist") || "{}"
       );
 
       localStorage.setItem(
         "unfazed-therapist",
-        JSON.stringify({
-          ...storedTherapist,
-          ...therapist,
-        })
+        JSON.stringify({ ...stored, ...therapist })
       );
 
-      setSuccess("Your profile has been saved successfully.");
+      setSuccess("Your changes have been saved successfully.");
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          "Could not save your profile. Please try again."
+          "We couldn't save your profile. Please try again."
       );
     } finally {
       setSaving(false);
     }
   }
 
+  const specializations = splitList(form.specializations);
+  const languages = splitList(form.languages);
+  const profileUrl = form.slug
+    ? `${window.location.origin}/${form.slug}`
+    : "";
+
   if (loading) {
     return (
-      <main className="profile-page">
-        <section className="profile-card">
-          <p>Loading your profile...</p>
-        </section>
+      <main className="pe-page">
+        <div className="pe-loading">
+          <Leaf size={28} />
+          <p>Preparing your calm space...</p>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="profile-page">
-      <section className="profile-card">
-        <Link to="/dashboard" className="profile-back-link">
-          <ArrowLeft size={17} />
-          Back to dashboard
-        </Link>
+    <main className="pe-page">
+      <div className="pe-shell">
+        <header className="pe-topbar">
+          <Link to="/dashboard" className="pe-back">
+            <ArrowLeft size={17} />
+            <span>Back to workspace</span>
+          </Link>
 
-        <div className="profile-heading">
-          <div className="profile-icon">
-            <Leaf size={25} />
+          <div className="pe-status">
+            <span className="pe-status-dot" />
+            Profile editor
+          </div>
+        </header>
+
+        <section className="pe-intro">
+          <div className="pe-intro-copy">
+            <div className="pe-kicker">
+              <Sparkles size={15} />
+              YOUR SPACE, YOUR STORY
+            </div>
+
+            <h1>
+              Let your practice
+              <br />
+              <span>feel like you.</span>
+            </h1>
+
+            <p>
+              Create a thoughtful introduction to your work.
+              Share what you do, who you support, and the
+              languages you speak.
+            </p>
           </div>
 
-          <p className="eyebrow">YOUR UNFAZED SPACE</p>
-          <h1>Set up your profile</h1>
-          <p className="profile-description">
-            Introduce yourself and help people understand
-            your professional approach.
-          </p>
-        </div>
+          <div className="pe-intro-art" aria-hidden="true">
+            <div className="pe-art-circle pe-art-circle-one" />
+            <div className="pe-art-circle pe-art-circle-two" />
+            <Leaf className="pe-art-leaf" size={82} strokeWidth={1} />
+            <span className="pe-art-sparkle">✳</span>
+            <span className="pe-art-caption">A space to grow</span>
+          </div>
+        </section>
 
         {error && (
-          <div className="profile-alert profile-alert-error" role="alert">
+          <div className="pe-alert pe-alert-error" role="alert">
             {error}
           </div>
         )}
 
         {success && (
-          <div
-            className="profile-alert profile-alert-success"
-            role="status"
-          >
+          <div className="pe-alert pe-alert-success" role="status">
+            <Check size={18} />
             {success}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="profile-form">
-          <div className="profile-field">
-            <label htmlFor="name">Full name *</label>
-            <input
-              id="name"
-              name="name"
-              type="text"
-              value={form.name}
-              onChange={handleChange}
-              placeholder="Your full name"
-              maxLength={100}
-              required
-            />
-          </div>
+        <div className="pe-layout">
+          <section className="pe-editor">
+            <div className="pe-section-heading">
+              <div className="pe-section-icon">
+                <UserRound size={20} />
+              </div>
 
-          <div className="profile-field">
-            <label htmlFor="email">Account email</label>
-            <input
-              id="email"
-              type="email"
-              value={form.email}
-              readOnly
-              className="profile-readonly"
-            />
-            <small>Your account email cannot be changed here.</small>
-          </div>
+              <div>
+                <span className="pe-step">01 — THE BASICS</span>
+                <h2>Introduce yourself</h2>
+                <p>Start with the details people need to know.</p>
+              </div>
+            </div>
 
-          <div className="profile-field">
-            <label htmlFor="bio">Professional introduction</label>
-            <textarea
-              id="bio"
-              name="bio"
-              value={form.bio}
-              onChange={handleChange}
-              placeholder="Tell visitors about your approach, experience, and the support you offer."
-              rows={6}
-              maxLength={2000}
-            />
-            <small>{form.bio.length}/2000 characters</small>
-          </div>
+            <form onSubmit={handleSubmit}>
+              <div className="pe-field">
+                <label htmlFor="name">Your name</label>
+                <input
+                  id="name"
+                  name="name"
+                  value={form.name}
+                  onChange={handleChange}
+                  placeholder="How should people know you?"
+                  maxLength={100}
+                  required
+                />
+              </div>
 
-          <div className="profile-field">
-            <label htmlFor="specializations">
-              Specializations
-            </label>
-            <input
-              id="specializations"
-              name="specializations"
-              type="text"
-              value={form.specializations}
-              onChange={handleChange}
-              placeholder="Stress management, Relationships, Anxiety"
-            />
-            <small>
-              Separate each specialization with a comma.
-            </small>
-          </div>
+              <div className="pe-field">
+                <label htmlFor="email">Account email</label>
+                <input
+                  id="email"
+                  type="email"
+                  value={form.email}
+                  readOnly
+                  className="pe-readonly"
+                />
+                <span className="pe-help">
+                  Your account email is private and cannot be edited here.
+                </span>
+              </div>
 
-          <div className="profile-field">
-            <label htmlFor="languages">Languages spoken</label>
-            <input
-              id="languages"
-              name="languages"
-              type="text"
-              value={form.languages}
-              onChange={handleChange}
-              placeholder="English, Hindi"
-            />
-            <small>Separate each language with a comma.</small>
-          </div>
+              <div className="pe-field">
+                <div className="pe-label-row">
+                  <label htmlFor="bio">Your introduction</label>
+                  <span>{form.bio.length}/2000</span>
+                </div>
 
-          <div className="profile-slug">
-            <span>YOUR PUBLIC PROFILE</span>
+                <textarea
+                  id="bio"
+                  name="bio"
+                  value={form.bio}
+                  onChange={handleChange}
+                  placeholder="Tell your story. Describe your approach, your professional interests, and what visitors can expect from working with you..."
+                  rows={6}
+                  maxLength={2000}
+                />
 
-            {form.slug ? (
-              <>
-                <p>
-                  {window.location.origin}/{form.slug}
+                <span className="pe-help">
+                  Write in your own voice. A warm, clear introduction
+                  helps visitors understand your approach.
+                </span>
+              </div>
+
+              <div className="pe-divider" />
+
+              <div className="pe-section-heading pe-second-heading">
+                <div className="pe-section-icon">
+                  <Globe2 size={20} />
+                </div>
+
+                <div>
+                  <span className="pe-step">02 — YOUR PRACTICE</span>
+                  <h2>What you bring</h2>
+                  <p>Help visitors discover your areas of focus.</p>
+                </div>
+              </div>
+
+              <div className="pe-field">
+                <label htmlFor="specializations">
+                  Areas of specialization
+                </label>
+
+                <input
+                  id="specializations"
+                  name="specializations"
+                  value={form.specializations}
+                  onChange={handleChange}
+                  placeholder="Stress management, Relationships, Anxiety"
+                />
+
+                <span className="pe-help">
+                  Separate each item with a comma.
+                </span>
+
+                {specializations.length > 0 && (
+                  <div className="pe-tags">
+                    {specializations.map((item, index) => (
+                      <span className="pe-tag" key={`${item}-${index}`}>
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="pe-field">
+                <label htmlFor="languages">Languages you speak</label>
+
+                <input
+                  id="languages"
+                  name="languages"
+                  value={form.languages}
+                  onChange={handleChange}
+                  placeholder="English, Hindi"
+                />
+
+                <span className="pe-help">
+                  List the languages you can comfortably use professionally.
+                </span>
+
+                {languages.length > 0 && (
+                  <div className="pe-tags pe-language-tags">
+                    {languages.map((item, index) => (
+                      <span className="pe-tag" key={`${item}-${index}`}>
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="pe-save-area">
+                <div className="pe-save-note">
+                  <Check size={16} />
+                  Your edits are saved when you press the button.
+                </div>
+
+                <button
+                  className="pe-save-button"
+                  type="submit"
+                  disabled={saving}
+                >
+                  {saving ? (
+                    "Saving your profile..."
+                  ) : (
+                    <>
+                      <Save size={17} />
+                      Save my profile
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <aside className="pe-preview-column">
+            <div className="pe-preview-title">
+              <div>
+                <span className="pe-step">LIVE PREVIEW</span>
+                <h2>Your public introduction</h2>
+              </div>
+              <Eye size={19} />
+            </div>
+
+            <article className="pe-preview-card">
+              <div className="pe-preview-cover">
+                <div className="pe-preview-cover-circle" />
+                <Leaf size={42} strokeWidth={1.1} />
+                <span>UNFAZED</span>
+              </div>
+
+              <div className="pe-preview-body">
+                <div className="pe-avatar">
+                  <UserRound size={29} strokeWidth={1.3} />
+                </div>
+
+                <span className="pe-preview-label">
+                  YOUR PRACTICE, YOUR WAY
+                </span>
+
+                <h3>{form.name.trim() || "Your name goes here"}</h3>
+
+                <p className="pe-preview-bio">
+                  {form.bio.trim() ||
+                    "Your introduction will appear here. Share a little about your professional approach and the people you support."}
                 </p>
 
+                {specializations.length > 0 && (
+                  <div className="pe-preview-group">
+                    <span className="pe-preview-group-title">
+                      AREAS OF FOCUS
+                    </span>
+
+                    <div className="pe-tags">
+                      {specializations.map((item, index) => (
+                        <span
+                          className="pe-tag"
+                          key={`${item}-${index}`}
+                        >
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {languages.length > 0 && (
+                  <div className="pe-preview-group">
+                    <span className="pe-preview-group-title">
+                      LANGUAGES
+                    </span>
+
+                    <div className="pe-tags">
+                      {languages.map((item, index) => (
+                        <span
+                          className="pe-tag"
+                          key={`${item}-${index}`}
+                        >
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="pe-preview-footer">
+                  <Leaf size={16} />
+                  <span>A more thoughtful space to connect.</span>
+                </div>
+              </div>
+            </article>
+
+            <div className="pe-url-card">
+              <div className="pe-url-icon">
+                <Globe2 size={19} />
+              </div>
+
+              <div className="pe-url-copy">
+                <span>Your public link</span>
+                <p>
+                  {form.slug
+                    ? `/${form.slug}`
+                    : "Your profile link will appear here"}
+                </p>
+              </div>
+
+              {form.slug && (
                 <Link
                   to={`/${form.slug}`}
-                  className="profile-preview-link"
                   target="_blank"
                   rel="noreferrer"
+                  className="pe-open-link"
+                  aria-label="Open public profile in a new tab"
                 >
-                  <Eye size={16} />
-                  Preview public profile
+                  <ArrowUpRight size={18} />
                 </Link>
-              </>
-            ) : (
-              <p>Your public profile link will appear here.</p>
-            )}
-          </div>
+              )}
+            </div>
 
-          <div className="profile-form-actions">
-            <button
-              type="submit"
-              className="primary-button"
-              disabled={saving}
-            >
-              <Save size={17} />
-              {saving ? "Saving profile..." : "Save profile"}
-            </button>
+            <p className="pe-privacy-note">
+              <Leaf size={15} />
+              Only your public profile details are shown to visitors.
+              Your account email is not included in the preview.
+            </p>
+          </aside>
+        </div>
 
-            <Link to="/dashboard" className="outline-button">
-              Cancel
-            </Link>
-          </div>
-        </form>
-      </section>
+        <footer className="pe-footer">
+          <span>UNFAZED</span>
+          <span>Make room for the work that matters.</span>
+        </footer>
+      </div>
     </main>
   );
 }

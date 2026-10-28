@@ -1,5 +1,6 @@
 
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, Link } from "react-router-dom";
+
 import Navbar from "./components/Navbar";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
@@ -7,6 +8,7 @@ import Dashboard from "./pages/Dashboard";
 import PublicProfile from "./pages/PublicProfile";
 import ProfileEditor from "./pages/ProfileEditor";
 
+// Home page
 function Home() {
   return (
     <main className="home-page">
@@ -16,25 +18,27 @@ function Home() {
         </p>
 
         <h1>
-          Make room for the work that <em>matters.</em>
+          Make room for the work that{" "}
+          <em>matters.</em>
         </h1>
 
         <p>
           A thoughtful workspace for therapists to organise
-          their practice, care for clients and find a calmer rhythm.
+          their practice, care for clients and find a calmer
+          rhythm.
         </p>
 
         <div className="hero-actions">
-          <a
+          <Link
             className="primary-button inline-button"
-            href="/register"
+            to="/register"
           >
             Build your workspace
-          </a>
+          </Link>
 
-          <a className="outline-button" href="/login">
+          <Link className="outline-button" to="/login">
             I have an account
-          </a>
+          </Link>
         </div>
 
         <div className="home-note">
@@ -45,26 +49,42 @@ function Home() {
   );
 }
 
+// Protect pages that require login
 function Protected({ children }) {
-  return localStorage.getItem("unfazed-token") ? (
-    children
-  ) : (
-    <Navigate to="/login" replace />
-  );
+  const token = localStorage.getItem("unfazed-token");
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
 }
 
+// Application routes
 export default function App() {
   return (
     <>
       <Navbar />
 
       <Routes>
-        <Route path="/" element={<Home />} />
+        {/* Home */}
+        <Route
+          path="/"
+          element={<Home />}
+        />
 
-        <Route path="/register" element={<Register />} />
+        {/* Authentication */}
+        <Route
+          path="/register"
+          element={<Register />}
+        />
 
-        <Route path="/login" element={<Login />} />
+        <Route
+          path="/login"
+          element={<Login />}
+        />
 
+        {/* Therapist dashboard */}
         <Route
           path="/dashboard"
           element={
@@ -74,6 +94,7 @@ export default function App() {
           }
         />
 
+        {/* Profile editor */}
         <Route
           path="/profile"
           element={
@@ -83,11 +104,13 @@ export default function App() {
           }
         />
 
+        {/* Public therapist profile */}
         <Route
           path="/:slug"
           element={<PublicProfile />}
         />
 
+        {/* Unknown routes */}
         <Route
           path="*"
           element={<Navigate to="/" replace />}
