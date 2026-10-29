@@ -7,19 +7,31 @@ import therapistRouter from "./routes/therapistRoutes.js";
 
 const app = express();
 
-// Allowed frontend origins
+// Frontend URLs permitted to access the backend.
 const allowedOrigins = [
   "http://localhost:5173",
   "https://unfazed-project-two.vercel.app",
+  "https://unfazed-project-gold.vercel.app",
+  "https://unfazed-project-3x36dsdhc-ridhima1504s-projects.vercel.app",
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
-// CORS configuration
+// Allow known production and preview deployments for this project.
+// Do not allow arbitrary websites.
+function isAllowedOrigin(origin) {
+  if (allowedOrigins.includes(origin)) {
+    return true;
+  }
+
+  return /^https:\/\/unfazed-project(?:-[a-z0-9-]+)?\.vercel\.app$/i.test(
+    origin
+  );
+}
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests without an Origin header, such as health checks
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || isAllowedOrigin(origin)) {
         return callback(null, true);
       }
 
@@ -31,10 +43,9 @@ app.use(
   })
 );
 
-// Parse JSON request bodies
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
-// Root route
+// API root
 app.get("/", (req, res) => {
   res.status(200).json({
     status: "ok",
@@ -43,7 +54,7 @@ app.get("/", (req, res) => {
   });
 });
 
-// Health check
+// Backend health check
 app.get("/api/health", (req, res) => {
   res.status(200).json({
     status: "ok",
@@ -51,13 +62,13 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// Authentication routes
+// Authentication
 app.use("/api/auth", authRouter);
 
-// Therapist profile routes
+// Therapist profiles
 app.use("/api/therapists", therapistRouter);
 
-// Handle unknown routes
+// Unknown routes
 app.use((req, res) => {
   res.status(404).json({
     status: "error",
@@ -65,7 +76,7 @@ app.use((req, res) => {
   });
 });
 
-// Error handler
+// Central error handler
 app.use((err, req, res, next) => {
   console.error("API error:", err.message);
 
@@ -73,13 +84,23 @@ app.use((err, req, res, next) => {
     return next(err);
   }
 
-  const isCorsError = err.message === "Not allowed by CORS";
+  if (err.message === "Not allowed by CORS") {
+    return res.status(403).json({
+      status: "error",
+      message: "Frontend origin is not allowed by CORS",
+    });
+  }
 
-  res.status(isCorsError ? 403 : 500).json({
+  if (err instanceof SyntaxError && "body" in err) {
+    return res.status(400).json({
+      status: "error",
+      message: "Invalid JSON request body",
+    });
+  }
+
+  return res.status(500).json({
     status: "error",
-    message: isCorsError
-      ? "Frontend origin is not allowed by CORS"
-      : "Internal server error",
+    message: "Internal server error",
   });
 });
 
