@@ -10,6 +10,7 @@ import ProfileEditor from "./pages/ProfileEditor";
 import Clients from "./pages/Clients";
 import Sessions from "./pages/Sessions";
 import SessionNotes from "./pages/SessionNotes";
+import Payments from "./pages/Payments";
 
 function Home() {
   return (
@@ -60,11 +61,14 @@ export default function App() {
       <Navbar />
 
       <Routes>
+        {/* Home page */}
         <Route path="/" element={<Home />} />
 
+        {/* Authentication pages */}
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
 
+        {/* Dashboard */}
         <Route
           path="/dashboard"
           element={
@@ -74,6 +78,7 @@ export default function App() {
           }
         />
 
+        {/* Therapist profile editor */}
         <Route
           path="/profile"
           element={
@@ -83,6 +88,7 @@ export default function App() {
           }
         />
 
+        {/* Client care */}
         <Route
           path="/clients"
           element={
@@ -92,6 +98,7 @@ export default function App() {
           }
         />
 
+        {/* Sessions */}
         <Route
           path="/sessions"
           element={
@@ -101,7 +108,7 @@ export default function App() {
           }
         />
 
-        {/* Session Notes: keep this above the public profile route */}
+        {/* Session notes */}
         <Route
           path="/notes"
           element={
@@ -111,7 +118,17 @@ export default function App() {
           }
         />
 
-        {/* Public therapist profiles */}
+        {/* Payments */}
+        <Route
+          path="/payments"
+          element={
+            <Protected>
+              <Payments />
+            </Protected>
+          }
+        />
+
+        {/* Public therapist profiles — keep after named routes */}
         <Route path="/:slug" element={<PublicProfile />} />
 
         {/* Unknown routes */}
