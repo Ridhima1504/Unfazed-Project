@@ -6,6 +6,7 @@ import {
   Search,
   UserRoundPlus,
   Users,
+  NotebookPen,
   Trash2,
   UserRound,
 } from "lucide-react";
@@ -16,7 +17,9 @@ const STORAGE_KEY = "unfazed-demo-clients";
 function readClients() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
+    const parsed = saved ? JSON.parse(saved) : [];
+
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
@@ -27,6 +30,7 @@ export default function Clients() {
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [message, setMessage] = useState("");
+
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -34,7 +38,11 @@ export default function Clients() {
   });
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(clients));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(clients));
+    } catch {
+      setMessage("Unable to save data in this browser.");
+    }
   }, [clients]);
 
   const filteredClients = useMemo(() => {
@@ -43,18 +51,34 @@ export default function Clients() {
     if (!query) return clients;
 
     return clients.filter((client) =>
-      [client.name, client.email, client.phone]
-        .some((value) => value.toLowerCase().includes(query))
+      [client.name, client.email, client.phone].some(
+        (value) => String(value || "").toLowerCase().includes(query)
+      )
     );
   }, [clients, search]);
 
   function handleChange(event) {
     const { name, value } = event.target;
 
+    if (name === "phone") {
+      // Allow digits only and limit the number to 10 digits.
+      const digitsOnly = value.replace(/\D/g, "").slice(0, 10);
+
+      setForm((current) => ({
+        ...current,
+        phone: digitsOnly,
+      }));
+
+      setMessage("");
+      return;
+    }
+
     setForm((current) => ({
       ...current,
       [name]: value,
     }));
+
+    setMessage("");
   }
 
   function handleSubmit(event) {
@@ -67,6 +91,11 @@ export default function Clients() {
 
     if (!name) {
       setMessage("Please enter the client's name.");
+      return;
+    }
+
+    if (!/^\d{10}$/.test(phone)) {
+      setMessage("Please enter a valid 10-digit mobile number.");
       return;
     }
 
@@ -109,7 +138,9 @@ export default function Clients() {
         <section className="clients-hero">
           <div>
             <p className="eyebrow">YOUR PRACTICE</p>
-            <h1>Client <em>care.</em></h1>
+            <h1>
+              Client <em>care.</em>
+            </h1>
             <p className="clients-intro">
               Keep your practice organised with a simple client directory.
             </p>
@@ -156,9 +187,9 @@ export default function Clients() {
         {showForm && (
           <section className="clients-form-card">
             <h2>Add a client</h2>
+
             <p className="clients-form-note">
-              This is a browser-only demo form. Do not enter real client
-              or patient information.
+              Demo only: do not enter real client or patient information.
             </p>
 
             <form onSubmit={handleSubmit}>
@@ -166,10 +197,12 @@ export default function Clients() {
               <input
                 id="client-name"
                 name="name"
+                type="text"
                 value={form.name}
                 onChange={handleChange}
                 placeholder="e.g. Alex Morgan"
                 maxLength={100}
+                autoComplete="off"
                 required
               />
 
@@ -182,18 +215,32 @@ export default function Clients() {
                 onChange={handleChange}
                 placeholder="alex@example.com"
                 maxLength={254}
+                autoComplete="off"
               />
 
-              <label htmlFor="client-phone">Phone number</label>
+              <label htmlFor="client-phone">Mobile number *</label>
               <input
                 id="client-phone"
                 name="phone"
                 type="tel"
+                inputMode="numeric"
+                pattern="[0-9]{10}"
+                title="Enter exactly 10 digits."
                 value={form.phone}
                 onChange={handleChange}
-                placeholder="Optional"
-                maxLength={30}
+                placeholder="Enter 10-digit mobile number"
+                maxLength={10}
+                minLength={10}
+                autoComplete="off"
+                aria-describedby="client-phone-help"
+                required
               />
+
+              <small id="client-phone-help">
+                Enter exactly 10 digits, without spaces or country code.
+                {form.phone.length > 0 &&
+                  ` ${form.phone.length}/10 digits entered.`}
+              </small>
 
               <button type="submit" className="clients-add-button">
                 Save demo client
@@ -228,7 +275,9 @@ export default function Clients() {
               </div>
 
               <h3>
-                {search ? "No matching clients" : "Your directory starts here"}
+                {search
+                  ? "No matching clients"
+                  : "Your directory starts here"}
               </h3>
 
               <p>
@@ -241,7 +290,10 @@ export default function Clients() {
                 <button
                   type="button"
                   className="clients-add-button"
-                  onClick={() => setShowForm(true)}
+                  onClick={() => {
+                    setShowForm(true);
+                    setMessage("");
+                  }}
                 >
                   <UserRoundPlus size={17} />
                   Add your first demo client
@@ -259,7 +311,7 @@ export default function Clients() {
                   <div className="client-details">
                     <h3>{client.name}</h3>
                     <p>{client.email || "No email added"}</p>
-                    {client.phone && <p>{client.phone}</p>}
+                    {client.phone && <p>Mobile: {client.phone}</p>}
                   </div>
 
                   <button
