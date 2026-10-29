@@ -9,6 +9,7 @@ import PublicProfile from "./pages/PublicProfile";
 import ProfileEditor from "./pages/ProfileEditor";
 import Clients from "./pages/Clients";
 import Sessions from "./pages/Sessions";
+import SessionNotes from "./pages/SessionNotes";
 
 function Home() {
   return (
@@ -26,10 +27,7 @@ function Home() {
         </p>
 
         <div className="hero-actions">
-          <Link
-            className="primary-button inline-button"
-            to="/register"
-          >
+          <Link className="primary-button inline-button" to="/register">
             Build your workspace
           </Link>
 
@@ -94,12 +92,21 @@ export default function App() {
           }
         />
 
-        {/* Sessions page */}
         <Route
           path="/sessions"
           element={
             <Protected>
               <Sessions />
+            </Protected>
+          }
+        />
+
+        {/* Session Notes: keep this above the public profile route */}
+        <Route
+          path="/notes"
+          element={
+            <Protected>
+              <SessionNotes />
             </Protected>
           }
         />
