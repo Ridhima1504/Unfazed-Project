@@ -7,25 +7,21 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import PublicProfile from "./pages/PublicProfile";
 import ProfileEditor from "./pages/ProfileEditor";
+import Clients from "./pages/Clients";
 
-// Home page
 function Home() {
   return (
     <main className="home-page">
       <section className="home-hero">
-        <p className="eyebrow">
-          A PRACTICE THAT FEELS LIKE YOU
-        </p>
+        <p className="eyebrow">A PRACTICE THAT FEELS LIKE YOU</p>
 
         <h1>
-          Make room for the work that{" "}
-          <em>matters.</em>
+          Make room for the work that <em>matters.</em>
         </h1>
 
         <p>
           A thoughtful workspace for therapists to organise
-          their practice, care for clients and find a calmer
-          rhythm.
+          their practice, care for clients and find a calmer rhythm.
         </p>
 
         <div className="hero-actions">
@@ -49,7 +45,6 @@ function Home() {
   );
 }
 
-// Protect pages that require login
 function Protected({ children }) {
   const token = localStorage.getItem("unfazed-token");
 
@@ -60,31 +55,17 @@ function Protected({ children }) {
   return children;
 }
 
-// Application routes
 export default function App() {
   return (
     <>
       <Navbar />
 
       <Routes>
-        {/* Home */}
-        <Route
-          path="/"
-          element={<Home />}
-        />
+        <Route path="/" element={<Home />} />
 
-        {/* Authentication */}
-        <Route
-          path="/register"
-          element={<Register />}
-        />
+        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Login />} />
 
-        <Route
-          path="/login"
-          element={<Login />}
-        />
-
-        {/* Therapist dashboard */}
         <Route
           path="/dashboard"
           element={
@@ -94,7 +75,6 @@ export default function App() {
           }
         />
 
-        {/* Profile editor */}
         <Route
           path="/profile"
           element={
@@ -104,17 +84,20 @@ export default function App() {
           }
         />
 
-        {/* Public therapist profile */}
+        {/* Client Care page */}
         <Route
-          path="/:slug"
-          element={<PublicProfile />}
+          path="/clients"
+          element={
+            <Protected>
+              <Clients />
+            </Protected>
+          }
         />
 
-        {/* Unknown routes */}
-        <Route
-          path="*"
-          element={<Navigate to="/" replace />}
-        />
+        {/* Public therapist profiles */}
+        <Route path="/:slug" element={<PublicProfile />} />
+
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
   );
