@@ -43,7 +43,6 @@ export default function App() {
 
       <Routes>
         <Route path="/" element={<Home />} />
-
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
 
@@ -106,7 +105,10 @@ export default function App() {
           element={<PublicProfile />}
         />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route
+          path="*"
+          element={<Navigate to="/" replace />}
+        />
       </Routes>
     </>
   );

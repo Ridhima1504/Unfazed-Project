@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -25,11 +24,19 @@ const initialProfile = {
   plan: "free",
 };
 
-const splitList = (value) =>
-  value
+const splitList = (value = "") =>
+  String(value)
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+
+function getErrorMessage(error, fallback) {
+  return (
+    error.response?.data?.message ||
+    error.message ||
+    fallback
+  );
+}
 
 export default function ProfileEditor() {
   const [form, setForm] = useState(initialProfile);
@@ -38,18 +45,22 @@ export default function ProfileEditor() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  // Load the logged-in therapist's profile.
   useEffect(() => {
     let active = true;
 
     async function loadProfile() {
-      try {
-        const token = localStorage.getItem("unfazed-token");
+      const token = localStorage.getItem("unfazed-token");
 
-        if (!token) {
+      if (!token) {
+        if (active) {
           setError("Please log in to edit your profile.");
-          return;
+          setLoading(false);
         }
+        return;
+      }
 
+      try {
         const { data } = await api.get("/therapists/me", {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -58,30 +69,40 @@ export default function ProfileEditor() {
 
         if (!active) return;
 
-        const therapist = data.therapist;
+        const therapist = data?.therapist ?? data;
+
+        if (!therapist || typeof therapist !== "object") {
+          throw new Error("The server returned an invalid profile.");
+        }
 
         setForm({
-          name: therapist.name || "",
-          email: therapist.email || "",
-          bio: therapist.bio || "",
+          name: therapist.name ?? "",
+          email: therapist.email ?? "",
+          bio: therapist.bio ?? "",
           specializations: Array.isArray(therapist.specializations)
             ? therapist.specializations.join(", ")
             : "",
           languages: Array.isArray(therapist.languages)
             ? therapist.languages.join(", ")
             : "",
-          slug: therapist.slug || "",
-          plan: therapist.plan || "free",
+          slug: therapist.slug ?? "",
+          plan: therapist.plan ?? "free",
         });
       } catch (err) {
-        if (active) {
-          setError(
-            err.response?.data?.message ||
-              "We couldn't load your profile. Please try again."
-          );
-        }
+        if (!active) return;
+
+        setError(
+          err.response?.status === 401
+            ? "Your session may have expired. Please log in again."
+            : getErrorMessage(
+                err,
+                "We couldn't load your profile. Please try again."
+              )
+        );
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     }
 
@@ -104,17 +125,34 @@ export default function ProfileEditor() {
     setSuccess("");
   }
 
+  // Save profile changes to the backend.
   async function handleSubmit(event) {
     event.preventDefault();
+
     setError("");
     setSuccess("");
 
-    if (!form.name.trim()) {
+    const token = localStorage.getItem("unfazed-token");
+
+    if (!token) {
+      setError("Please log in before saving your profile.");
+      return;
+    }
+
+    const name = form.name.trim();
+    const bio = form.bio.trim();
+
+    if (!name) {
       setError("Please enter your name.");
       return;
     }
 
-    if (form.bio.length > 2000) {
+    if (name.length > 100) {
+      setError("Your name must be 100 characters or fewer.");
+      return;
+    }
+
+    if (bio.length > 2000) {
       setError("Your introduction must be 2000 characters or fewer.");
       return;
     }
@@ -122,13 +160,11 @@ export default function ProfileEditor() {
     setSaving(true);
 
     try {
-      const token = localStorage.getItem("unfazed-token");
-
       const { data } = await api.put(
         "/therapists/me",
         {
-          name: form.name.trim(),
-          bio: form.bio.trim(),
+          name,
+          bio,
           specializations: splitList(form.specializations),
           languages: splitList(form.languages),
         },
@@ -139,37 +175,58 @@ export default function ProfileEditor() {
         }
       );
 
-      const therapist = data.therapist;
+      const therapist = data?.therapist ?? data;
+
+      if (!therapist || typeof therapist !== "object") {
+        throw new Error("The server returned an invalid profile.");
+      }
+
+      const updatedForm = {
+        name: therapist.name ?? name,
+        email: therapist.email ?? form.email,
+        bio: therapist.bio ?? bio,
+        specializations: Array.isArray(therapist.specializations)
+          ? therapist.specializations.join(", ")
+          : form.specializations,
+        languages: Array.isArray(therapist.languages)
+          ? therapist.languages.join(", ")
+          : form.languages,
+        slug: therapist.slug ?? form.slug,
+        plan: therapist.plan ?? form.plan,
+      };
 
       setForm((current) => ({
         ...current,
-        name: therapist.name ?? current.name,
-        email: therapist.email ?? current.email,
-        bio: therapist.bio ?? "",
-        specializations: Array.isArray(therapist.specializations)
-          ? therapist.specializations.join(", ")
-          : "",
-        languages: Array.isArray(therapist.languages)
-          ? therapist.languages.join(", ")
-          : "",
-        slug: therapist.slug ?? current.slug,
-        plan: therapist.plan ?? current.plan,
+        ...updatedForm,
       }));
 
-      const stored = JSON.parse(
-        localStorage.getItem("unfazed-therapist") || "{}"
-      );
+      // Update the locally cached therapist information.
+      // A cache parsing error should not undo a successful API save.
+      try {
+        const stored = JSON.parse(
+          localStorage.getItem("unfazed-therapist") || "{}"
+        );
 
-      localStorage.setItem(
-        "unfazed-therapist",
-        JSON.stringify({ ...stored, ...therapist })
-      );
+        localStorage.setItem(
+          "unfazed-therapist",
+          JSON.stringify({
+            ...stored,
+            ...therapist,
+          })
+        );
+      } catch {
+        // Ignore local cache errors.
+      }
 
       setSuccess("Your changes have been saved successfully.");
     } catch (err) {
       setError(
-        err.response?.data?.message ||
-          "We couldn't save your profile. Please try again."
+        err.response?.status === 401
+          ? "Your session may have expired. Please log in again."
+          : getErrorMessage(
+              err,
+              "We couldn't save your profile. Please try again."
+            )
       );
     } finally {
       setSaving(false);
@@ -178,8 +235,10 @@ export default function ProfileEditor() {
 
   const specializations = splitList(form.specializations);
   const languages = splitList(form.languages);
+
+  // This must match the route in App.jsx: /therapist/:slug
   const profileUrl = form.slug
-    ? `${window.location.origin}/${form.slug}`
+    ? `${window.location.origin}/therapist/${encodeURIComponent(form.slug)}`
     : "";
 
   if (loading) {
@@ -267,6 +326,7 @@ export default function ProfileEditor() {
             <form onSubmit={handleSubmit}>
               <div className="pe-field">
                 <label htmlFor="name">Your name</label>
+
                 <input
                   id="name"
                   name="name"
@@ -274,19 +334,23 @@ export default function ProfileEditor() {
                   onChange={handleChange}
                   placeholder="How should people know you?"
                   maxLength={100}
+                  autoComplete="name"
                   required
                 />
               </div>
 
               <div className="pe-field">
                 <label htmlFor="email">Account email</label>
+
                 <input
                   id="email"
                   type="email"
                   value={form.email}
                   readOnly
                   className="pe-readonly"
+                  autoComplete="email"
                 />
+
                 <span className="pe-help">
                   Your account email is private and cannot be edited here.
                 </span>
@@ -412,6 +476,7 @@ export default function ProfileEditor() {
                 <span className="pe-step">LIVE PREVIEW</span>
                 <h2>Your public introduction</h2>
               </div>
+
               <Eye size={19} />
             </div>
 
@@ -446,10 +511,7 @@ export default function ProfileEditor() {
 
                     <div className="pe-tags">
                       {specializations.map((item, index) => (
-                        <span
-                          className="pe-tag"
-                          key={`${item}-${index}`}
-                        >
+                        <span className="pe-tag" key={`${item}-${index}`}>
                           {item}
                         </span>
                       ))}
@@ -465,10 +527,7 @@ export default function ProfileEditor() {
 
                     <div className="pe-tags">
                       {languages.map((item, index) => (
-                        <span
-                          className="pe-tag"
-                          key={`${item}-${index}`}
-                        >
+                        <span className="pe-tag" key={`${item}-${index}`}>
                           {item}
                         </span>
                       ))}
@@ -492,21 +551,21 @@ export default function ProfileEditor() {
                 <span>Your public link</span>
                 <p>
                   {form.slug
-                    ? `/${form.slug}`
+                    ? `/therapist/${form.slug}`
                     : "Your profile link will appear here"}
                 </p>
               </div>
 
-              {form.slug && (
-                <Link
-                  to={`/${form.slug}`}
+              {profileUrl && (
+                <a
+                  href={profileUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="pe-open-link"
                   aria-label="Open public profile in a new tab"
                 >
                   <ArrowUpRight size={18} />
-                </Link>
+                </a>
               )}
             </div>
 
