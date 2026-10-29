@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard";
 import PublicProfile from "./pages/PublicProfile";
 import ProfileEditor from "./pages/ProfileEditor";
 import Clients from "./pages/Clients";
+import Sessions from "./pages/Sessions";
 
 function Home() {
   return (
@@ -84,7 +85,6 @@ export default function App() {
           }
         />
 
-        {/* Client Care page */}
         <Route
           path="/clients"
           element={
@@ -94,9 +94,20 @@ export default function App() {
           }
         />
 
+        {/* Sessions page */}
+        <Route
+          path="/sessions"
+          element={
+            <Protected>
+              <Sessions />
+            </Protected>
+          }
+        />
+
         {/* Public therapist profiles */}
         <Route path="/:slug" element={<PublicProfile />} />
 
+        {/* Unknown routes */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
