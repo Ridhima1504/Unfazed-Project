@@ -206,7 +206,7 @@ export default function Clients() {
                 required
               />
 
-              <label htmlFor="client-email">Email address</label>
+              <label htmlFor="client-email">Email address *</label>
               <input
                 id="client-email"
                 name="email"
@@ -216,6 +216,7 @@ export default function Clients() {
                 placeholder="alex@example.com"
                 maxLength={254}
                 autoComplete="off"
+                required
               />
 
               <label htmlFor="client-phone">Mobile number *</label>
@@ -231,7 +232,7 @@ export default function Clients() {
                 placeholder="Enter 10-digit mobile number"
                 maxLength={10}
                 minLength={10}
-                autoComplete="off"
+                autoComplete="on"
                 aria-describedby="client-phone-help"
                 required
               />
